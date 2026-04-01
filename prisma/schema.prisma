@@ -1,1 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum VehicleStatus {
+  clean
+  minor_damage
+  write_off
+}
+
+model Vehicle {
+  id          String        @id @default(cuid())
+  vin         String        @unique
+  status      VehicleStatus
+  description String
+  createdAt   DateTime      @default(now())
+
+  @@map("vehicles")
+}
