@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# In your project root, create .env file
+
+DATABASE_URL="postgresql://neondb_owner:npg_ZiKc8Sh9TrsN@ep-noisy-bar-anba1rhl-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 # vercel
 .vercel
