@@ -1,5 +1,5 @@
 "use client";
-import { useState } = from "react";
+import { useState } from "react";
 
 type EscrowStatus = "idle" | "pending" | "inspection" | "approved" | "released";
 
