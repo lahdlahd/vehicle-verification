@@ -1,59 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
-import Groq from "groq-sdk";
+import { prisma } from "@/lib/prisma";
+import { generateVehicleHash, verifyVehicleHash } from "@/lib/hash";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ vin: string }> }
+) {
+  const { vin: rawVin } = await params;
+  const vin = rawVin.toUpperCase().trim();
 
-export async function POST(request: NextRequest) {
+  if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(vin)) {
+    return NextResponse.json(
+      { error: "Invalid VIN format. VINs must be 17 alphanumeric characters." },
+      { status: 400 }
+    );
+  }
+
   try {
-    const { vin, status, description, question } = await request.json();
+    const vehicle = await prisma.vehicle.findUnique({ where: { vin } });
 
-    if (!vin || !status || !description || !question) {
+    if (!vehicle) {
       return NextResponse.json(
-        { error: "Missing required fields." },
-        { status: 400 }
+        { error: "No record found for this VIN." },
+        { status: 404 }
       );
     }
 
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: `You are a helpful and knowledgeable car buying advisor.
-STRICT RULES:
-- Answer ONLY the exact question the user asked. Nothing else.
-- If asked about budget (e.g. "$1000"), give general car buying advice for that budget. Ignore the vehicle record.
-- If asked about THIS specific vehicle, use the vehicle record to answer.
-- If asked about safety, talk about safety only.
-- If asked about repair costs, estimate costs only.
-- NEVER use the same format or structure twice.
-- Be conversational, direct, and helpful.
-- Keep responses under 150 words.`,
-        },
-        {
-          role: "user",
-          content: `Vehicle on record:
-- VIN: ${vin}
-- Status: ${status.replace(/_/g, " ").toUpperCase()}
-- History: ${description}
+    let hash = vehicle.hash;
+    if (!hash) {
+      hash = generateVehicleHash(
+        vehicle.vin,
+        vehicle.status,
+        vehicle.description,
+        vehicle.createdAt
+      );
+      await prisma.vehicle.update({
+        where: { vin },
+        data: { hash },
+      });
+    }
 
-My question: ${question}`,
-        },
-      ],
-      max_tokens: 512,
-      temperature: 0.9,
-    });
+    const isVerified = verifyVehicleHash(
+      vehicle.vin,
+      vehicle.status,
+      vehicle.description,
+      vehicle.createdAt,
+      hash
+    );
 
-    const responseText = completion.choices[0]?.message?.content || "";
+    return NextResponse.json({
+      vehicle: { ...vehicle, hash },
+      isVerified,
+    }, { status: 200 });
 
-    return NextResponse.json({ response: responseText }, { status: 200 });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("AI risk analysis error:", message);
+  } catch (error) {
+    console.error("VIN lookup error:", error);
     return NextResponse.json(
-      { error: message },
+      { error: "Internal server error. Please try again." },
       { status: 500 }
     );
   }
