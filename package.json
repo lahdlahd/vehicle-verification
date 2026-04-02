@@ -20,6 +20,7 @@
     "@neondatabase/serverless": "^1.0.2",
     "@prisma/adapter-neon": "^7.6.0",
     "dotenv": "^17.4.0",
+    "genlayer-js": "^0.28.4",
     "groq-sdk": "^1.1.2",
     "next": "16.2.2",
     "react": "19.2.4",
