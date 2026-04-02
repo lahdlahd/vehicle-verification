@@ -1,11 +1,12 @@
 import { createClient, chains } from "genlayer-js";
 
+const CONTRACT_ADDRESS = process.env.GENLAYER_CONTRACT_ADDRESS as `0x${string}`;
+const RPC_URL = process.env.GENLAYER_RPC_URL || "https://studio.genlayer.com/api";
+
 const client = createClient({
   chain: chains.localnet,
-  endpoint: process.env.GENLAYER_RPC_URL || "https://studio.genlayer.com/api",
+  endpoint: RPC_URL,
 });
-
-const CONTRACT_ADDRESS = process.env.GENLAYER_CONTRACT_ADDRESS as `0x${string}`;
 
 export interface VehicleRecord {
   vin: string;
@@ -21,11 +22,13 @@ export async function getVehicleFromChain(vin: string): Promise<VehicleRecord | 
       address: CONTRACT_ADDRESS,
       functionName: "get_vehicle",
       args: [vin],
+      stateStatus: "latest",
     });
     if (!result) return null;
     const parsed = typeof result === "string" ? JSON.parse(result) : result;
     return parsed as VehicleRecord;
-  } catch {
+  } catch (e) {
+    console.error("GenLayer getVehicle error:", e);
     return null;
   }
 }
@@ -36,9 +39,11 @@ export async function verifyVehicleOnChain(vin: string): Promise<boolean> {
       address: CONTRACT_ADDRESS,
       functionName: "verify_vehicle",
       args: [vin],
+      stateStatus: "latest",
     });
     return result === true;
-  } catch {
+  } catch (e) {
+    console.error("GenLayer verify error:", e);
     return false;
   }
 }
@@ -49,9 +54,11 @@ export async function vehicleExistsOnChain(vin: string): Promise<boolean> {
       address: CONTRACT_ADDRESS,
       functionName: "vehicle_exists",
       args: [vin],
+      stateStatus: "latest",
     });
     return result === true;
-  } catch {
+  } catch (e) {
+    console.error("GenLayer exists error:", e);
     return false;
   }
 }
