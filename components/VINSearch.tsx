@@ -1,4 +1,5 @@
 "use client";
+import AIRiskAssistant from "@/components/AIRiskAssistant";
 import { useState } from "react";
 
 type VehicleStatus = "clean" | "minor_damage" | "write_off";
@@ -194,6 +195,17 @@ export default function VINSearch() {
           </div>
         );
       })()}
+
+      {/* AI Risk Assistant — shows after vehicle is found */}
+      {vehicle && (
+        <AIRiskAssistant
+          vin={vehicle.vin}
+          status={vehicle.status}
+          description={vehicle.description}
+        />
+      )}
+
+      <div className="text-center"></div>
 
       <div className="text-center">
         <p className="text-xs text-zinc-600">
