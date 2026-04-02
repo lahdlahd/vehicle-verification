@@ -1,4 +1,5 @@
 "use client";
+import EscrowSimulator from "@/components/EscrowSimulator";
 import AIRiskAssistant from "@/components/AIRiskAssistant";
 import { useState } from "react";
 
@@ -202,6 +203,13 @@ export default function VINSearch() {
           vin={vehicle.vin}
           status={vehicle.status}
           description={vehicle.description}
+        />
+      )}
+
+      {vehicle && (
+        <EscrowSimulator
+          vin={vehicle.vin}
+          status={vehicle.status}
         />
       )}
 
