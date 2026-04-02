@@ -22,7 +22,6 @@ export async function getVehicleFromChain(vin: string): Promise<VehicleRecord | 
       address: CONTRACT_ADDRESS,
       functionName: "get_vehicle",
       args: [vin],
-      stateStatus: "latest",
     });
     if (!result) return null;
     const parsed = typeof result === "string" ? JSON.parse(result) : result;
@@ -39,7 +38,6 @@ export async function verifyVehicleOnChain(vin: string): Promise<boolean> {
       address: CONTRACT_ADDRESS,
       functionName: "verify_vehicle",
       args: [vin],
-      stateStatus: "latest",
     });
     return result === true;
   } catch (e) {
@@ -54,7 +52,6 @@ export async function vehicleExistsOnChain(vin: string): Promise<boolean> {
       address: CONTRACT_ADDRESS,
       functionName: "vehicle_exists",
       args: [vin],
-      stateStatus: "latest",
     });
     return result === true;
   } catch (e) {
