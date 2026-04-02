@@ -16,37 +16,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = `You are an expert automotive risk analyst helping a car buyer make an informed decision.
-
-Vehicle Record:
-- VIN: ${vin}
-- Status: ${status.replace("_", " ").toUpperCase()}
-- History: ${description}
-
-Buyer's Question: ${question}
-
-Please provide:
-1. **Risk Assessment**: Overall risk level and what it means
-2. **Safety Concerns**: Specific safety issues to be aware of
-3. **Maintenance Expectations**: What the buyer should expect to spend/fix
-4. **Recommendation**: Should they buy this vehicle or not, and why
-
-Be direct, factual, and helpful. Keep each section to 2-3 sentences.`;
-
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
-          content: "You are an expert automotive risk analyst and vehicle safety advisor. Be direct, factual, and helpful.",
+          content: `You are an expert automotive risk analyst and vehicle advisor. 
+You have access to a specific vehicle's record and you answer buyer questions honestly and directly.
+Always tailor your response to the exact question asked — do not follow a rigid format.
+If the question is about the specific vehicle, use its data to answer.
+If the question is general (like budget advice), answer it naturally as a car expert would.
+Be conversational, helpful, and concise.`,
         },
         {
           role: "user",
-          content: prompt,
+          content: `Vehicle Record:
+- VIN: ${vin}
+- Status: ${status.replace(/_/g, " ").toUpperCase()}
+- History: ${description}
+
+Buyer's Question: ${question}`,
         },
       ],
       max_tokens: 1024,
-      temperature: 0.7,
+      temperature: 0.8,
     });
 
     const responseText = completion.choices[0]?.message?.content || "";
