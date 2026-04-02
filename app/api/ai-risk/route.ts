@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,13 +14,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const systemPrompt = `You are an expert automotive risk analyst and vehicle safety advisor. 
-You analyze vehicle history records and provide clear, honest assessments to help buyers make informed decisions.
-You have access to a vehicle's VIN, status, and history description.
-Always be direct, factual, and helpful. Format your response in clear sections.
-Keep responses concise but thorough — aim for 3-5 sentences per section.`;
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const userPrompt = `Vehicle Record:
+    const prompt = `You are an expert automotive risk analyst helping a car buyer make an informed decision.
+
+Vehicle Record:
 - VIN: ${vin}
 - Status: ${status.replace("_", " ").toUpperCase()}
 - History: ${description}
@@ -33,22 +29,12 @@ Please provide:
 1. **Risk Assessment**: Overall risk level and what it means
 2. **Safety Concerns**: Specific safety issues to be aware of
 3. **Maintenance Expectations**: What the buyer should expect to spend/fix
-4. **Recommendation**: Should they buy this vehicle or not, and why`;
+4. **Recommendation**: Should they buy this vehicle or not, and why
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: userPrompt,
-        },
-      ],
-      system: systemPrompt,
-    });
+Be direct, factual, and helpful. Keep each section to 2-3 sentences.`;
 
-    const responseText =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
 
     return NextResponse.json({ response: responseText }, { status: 200 });
   } catch (error) {
