@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,8 +15,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `You are an expert automotive risk analyst helping a car buyer make an informed decision.
 
@@ -33,14 +33,30 @@ Please provide:
 
 Be direct, factual, and helpful. Keep each section to 2-3 sentences.`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert automotive risk analyst and vehicle safety advisor. Be direct, factual, and helpful.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_tokens: 1024,
+      temperature: 0.7,
+    });
+
+    const responseText = completion.choices[0]?.message?.content || "";
 
     return NextResponse.json({ response: responseText }, { status: 200 });
-  } catch (error) {
-    console.error("AI risk analysis error:", error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("AI risk analysis error:", message);
     return NextResponse.json(
-      { error: "Failed to generate risk analysis. Please try again." },
+      { error: message },
       { status: 500 }
     );
   }
