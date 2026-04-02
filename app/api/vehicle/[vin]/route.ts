@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { vin: string } }
+  { params }: { params: Promise<{ vin: string }> }
 ) {
-  const vin = params.vin.toUpperCase().trim();
+  const { vin: rawVin } = await params;
+  const vin = rawVin.toUpperCase().trim();
 
   if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(vin)) {
     return NextResponse.json(

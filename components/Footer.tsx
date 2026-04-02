@@ -4,12 +4,7 @@ export default function Footer() {
       <div className="max-w-5xl mx-auto flex items-center justify-center">
         <p className="text-sm text-zinc-500 tracking-wide">
           Built by{" "}
-          
-            href="https://x.com/_joelad"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-400 hover:text-amber-300 font-semibold transition-colors duration-200 underline underline-offset-4 decoration-amber-400/40 hover:decoration-amber-300"
-          >
+          <a href="https://x.com/_joelad" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 font-semibold transition-colors duration-200 underline underline-offset-4">
             Lahd
           </a>
         </p>
