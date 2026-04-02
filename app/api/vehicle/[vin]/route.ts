@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateVehicleHash, verifyVehicleHash } from "@/lib/hash";
+import { getVehicleFromChain, verifyVehicleOnChain } from "@/lib/genlayer";
 
 export async function GET(
   request: NextRequest,
@@ -17,6 +18,33 @@ export async function GET(
   }
 
   try {
+    // ── Try GenLayer first ──────────────────────────────
+    if (process.env.GENLAYER_CONTRACT_ADDRESS) {
+      console.log("Trying GenLayer contract:", process.env.GENLAYER_CONTRACT_ADDRESS);
+      try {
+        const chainVehicle = await getVehicleFromChain(vin);
+        console.log("GenLayer result:", chainVehicle);
+
+        if (chainVehicle) {
+          const isVerified = await verifyVehicleOnChain(vin);
+          return NextResponse.json({
+            vehicle: {
+              ...chainVehicle,
+              id: vin,
+              createdAt: new Date().toISOString(),
+              source: "genlayer",
+            },
+            isVerified,
+            source: "genlayer",
+          }, { status: 200 });
+        }
+      } catch (e) {
+        console.error("GenLayer error:", e);
+      }
+    }
+
+    // ── Fall back to Prisma DB ──────────────────────────
+    console.log("Falling back to Prisma DB");
     const vehicle = await prisma.vehicle.findUnique({ where: { vin } });
 
     if (!vehicle) {
@@ -51,6 +79,7 @@ export async function GET(
     return NextResponse.json({
       vehicle: { ...vehicle, hash },
       isVerified,
+      source: "database",
     }, { status: 200 });
 
   } catch (error) {
