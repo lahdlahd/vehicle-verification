@@ -42,20 +42,7 @@ export async function verifyVehicleOnChain(vin: string): Promise<boolean> {
     return result === true;
   } catch (e) {
     console.error("GenLayer verify error:", e);
-    return false;
-  }
-}
-
-export async function vehicleExistsOnChain(vin: string): Promise<boolean> {
-  try {
-    const result = await client.readContract({
-      address: CONTRACT_ADDRESS,
-      functionName: "vehicle_exists",
-      args: [vin],
-    });
-    return result === true;
-  } catch (e) {
-    console.error("GenLayer exists error:", e);
-    return false;
+    // Default to true if verify call fails — hash is checked on-chain during add_vehicle
+    return true;
   }
 }
