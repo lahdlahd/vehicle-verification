@@ -1,55 +1,91 @@
 import { NextRequest, NextResponse } from "next/server";
-import Groq from "groq-sdk";
+import { prisma } from "@/lib/prisma";
+import { generateVehicleHash, verifyVehicleHash } from "@/lib/hash";
+import { getVehicleFromChain, verifyVehicleOnChain } from "@/lib/genlayer";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ vin: string }> }
+) {
+  const { vin: rawVin } = await params;
+  const vin = rawVin.toUpperCase().trim();
 
-export async function POST(request: NextRequest) {
+  if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(vin)) {
+    return NextResponse.json(
+      { error: "Invalid VIN format. VINs must be 17 alphanumeric characters." },
+      { status: 400 }
+    );
+  }
+
   try {
-    const { vin, status, description, question } = await request.json();
+    // ── Try GenLayer first ──────────────────────────────
+    if (process.env.GENLAYER_CONTRACT_ADDRESS) {
+      console.log("Trying GenLayer contract:", process.env.GENLAYER_CONTRACT_ADDRESS);
+      try {
+        const chainVehicle = await getVehicleFromChain(vin);
+        console.log("GenLayer result:", chainVehicle);
 
-    if (!vin || !status || !description || !question) {
+        if (chainVehicle) {
+          const isVerified = await verifyVehicleOnChain(vin);
+          return NextResponse.json({
+            vehicle: {
+              ...chainVehicle,
+              id: vin,
+              createdAt: new Date().toISOString(),
+              source: "genlayer",
+            },
+            isVerified,
+            source: "genlayer",
+          }, { status: 200 });
+        }
+      } catch (e) {
+        console.error("GenLayer error:", e);
+      }
+    }
+
+    // ── Fall back to Prisma DB ──────────────────────────
+    console.log("Falling back to Prisma DB");
+    const vehicle = await prisma.vehicle.findUnique({ where: { vin } });
+
+    if (!vehicle) {
       return NextResponse.json(
-        { error: "Missing required fields." },
-        { status: 400 }
+        { error: "No record found for this VIN." },
+        { status: 404 }
       );
     }
 
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert automotive risk analyst and vehicle advisor. 
-You have access to a specific vehicle's record and you answer buyer questions honestly and directly.
-Always tailor your response to the exact question asked — do not follow a rigid format.
-If the question is about the specific vehicle, use its data to answer.
-If the question is general (like budget advice), answer it naturally as a car expert would.
-Be conversational, helpful, and concise.`,
-        },
-        {
-          role: "user",
-          content: `Vehicle Record:
-- VIN: ${vin}
-- Status: ${status.replace(/_/g, " ").toUpperCase()}
-- History: ${description}
+    let hash = vehicle.hash;
+    if (!hash) {
+      hash = generateVehicleHash(
+        vehicle.vin,
+        vehicle.status,
+        vehicle.description,
+        vehicle.createdAt
+      );
+      await prisma.vehicle.update({
+        where: { vin },
+        data: { hash },
+      });
+    }
 
-Buyer's Question: ${question}`,
-        },
-      ],
-      max_tokens: 1024,
-      temperature: 0.8,
-    });
+    const isVerified = verifyVehicleHash(
+      vehicle.vin,
+      vehicle.status,
+      vehicle.description,
+      vehicle.createdAt,
+      hash
+    );
 
-    const responseText = completion.choices[0]?.message?.content || "";
+    return NextResponse.json({
+      vehicle: { ...vehicle, hash },
+      isVerified,
+      source: "database",
+    }, { status: 200 });
 
-    return NextResponse.json({ response: responseText }, { status: 200 });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("AI risk analysis error:", message);
+  } catch (error) {
+    console.error("VIN lookup error:", error);
     return NextResponse.json(
-      { error: message },
+      { error: "Internal server error. Please try again." },
       { status: 500 }
     );
   }
