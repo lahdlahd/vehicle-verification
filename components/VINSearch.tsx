@@ -9,6 +9,7 @@ interface Vehicle {
   status: VehicleStatus;
   description: string;
   createdAt: string;
+  hash: string | null;
 }
 
 const STATUS_CONFIG: Record<VehicleStatus, { label: string; color: string; bg: string; border: string; dot: string }> = {
@@ -21,6 +22,7 @@ export default function VINSearch() {
   const [vin, setVin] = useState("");
   const [loading, setLoading] = useState(false);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
 
@@ -38,6 +40,7 @@ export default function VINSearch() {
         setError(data.error || "Something went wrong.");
       } else {
         setVehicle(data.vehicle);
+        setIsVerified(data.isVerified);
       }
     } catch {
       setError("Network error. Please check your connection.");
@@ -55,6 +58,7 @@ export default function VINSearch() {
     setVehicle(null);
     setError(null);
     setSearched(false);
+    setIsVerified(false);
   };
 
   return (
@@ -129,13 +133,27 @@ export default function VINSearch() {
         const cfg = STATUS_CONFIG[vehicle.status];
         return (
           <div className="bg-zinc-900 border border-white/10 rounded-xl overflow-hidden">
+            {/* Header */}
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
                 <span className="font-mono text-sm text-zinc-300 tracking-widest">{vehicle.vin}</span>
               </div>
-              <button onClick={handleReset} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">Clear</button>
+              <div className="flex items-center gap-3">
+                {/* Verified badge */}
+                {isVerified && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                    </svg>
+                    Verified Record
+                  </span>
+                )}
+                <button onClick={handleReset} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">Clear</button>
+              </div>
             </div>
+
+            {/* Body */}
             <div className="p-6 flex flex-col gap-5">
               <div className="flex items-center gap-3">
                 <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Status</span>
@@ -144,10 +162,28 @@ export default function VINSearch() {
                   {cfg.label}
                 </span>
               </div>
+
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">History</span>
                 <p className="text-zinc-300 text-sm leading-relaxed">{vehicle.description}</p>
               </div>
+
+              {/* Hash display */}
+              {vehicle.hash && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Record Hash</span>
+                  <div className="bg-zinc-950 border border-white/5 rounded-lg px-4 py-2.5 flex items-center justify-between gap-3">
+                    <span className="font-mono text-xs text-zinc-400 truncate">
+                      {vehicle.hash.slice(0, 20)}...{vehicle.hash.slice(-8)}
+                    </span>
+                    <span className="text-[10px] text-zinc-600 shrink-0">SHA256</span>
+                  </div>
+                  <p className="text-xs text-zinc-600">
+                    This hash is computed from the VIN, status, description and timestamp. Any change to the record will invalidate it.
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pt-3 border-t border-white/5">
                 <span className="text-xs text-zinc-600">
                   Recorded {new Date(vehicle.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}

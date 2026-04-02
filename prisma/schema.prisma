@@ -18,6 +18,7 @@ model Vehicle {
   vin         String        @unique
   status      VehicleStatus
   description String
+  hash        String?
   createdAt   DateTime      @default(now())
 
   @@map("vehicles")

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { generateVehicleHash, verifyVehicleHash } from "@/lib/hash";
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +26,35 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ vehicle }, { status: 200 });
+    // If no hash exists yet, generate and save it
+    let hash = vehicle.hash;
+    if (!hash) {
+      hash = generateVehicleHash(
+        vehicle.vin,
+        vehicle.status,
+        vehicle.description,
+        vehicle.createdAt
+      );
+      await prisma.vehicle.update({
+        where: { vin },
+        data: { hash },
+      });
+    }
+
+    // Verify the hash matches the current data
+    const isVerified = verifyVehicleHash(
+      vehicle.vin,
+      vehicle.status,
+      vehicle.description,
+      vehicle.createdAt,
+      hash
+    );
+
+    return NextResponse.json({
+      vehicle: { ...vehicle, hash },
+      isVerified,
+    }, { status: 200 });
+
   } catch (error) {
     console.error("VIN lookup error:", error);
     return NextResponse.json(
